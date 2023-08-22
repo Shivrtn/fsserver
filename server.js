@@ -1,74 +1,64 @@
+const express = require('express');
+const app = express();
 
-
-
-const express=require('express');
-const app =express();
-
-const body_parser=require('body-parser');
-const cors=require('cors');
+const bodyParser = require('body-parser');
+const cors = require('cors');
 app.use(cors());
-app.use(body_parser.text());
-app.use(body_parser.json());
+app.use(bodyParser.text());
+app.use(bodyParser.json());
 
 const fs = require('fs');
-const filePath=  'financial_data.json';
-app.get("/",(req,res)=>{ 
-  console.log('logged in')
-  
-fs.readFile(filePath, 'utf8', (err, data) => {
-  if (err) {
-    console.error('Error reading JSON file:', err);
-    return;
-  }
+const filePath = 'financial_data.json';
 
-  try {
-    const jsonData = JSON.parse(data);
-    res.json(jsonData);
+// Helper function to read and parse JSON file
+function readJsonFile(callback) {
+  fs.readFile(filePath, 'utf8', (err, data) => {
+    if (err) {
+      console.error('Error reading JSON file:', err);
+      callback(err, null);
+      return;
+    }
 
-    // You can now work with the parsed JSON data as a JavaScript object
-  } catch (parseError) {
-    console.error('Error parsing JSON:', parseError);
-  }
-});
-})
+    try {
+      const jsonData = JSON.parse(data);
+      callback(null, jsonData);
+    } catch (parseError) {
+      console.error('Error parsing JSON:', parseError);
+      callback(parseError, null);
+    }
+  });
+}
 
-app.post("/post",(req,res)=>{
-console.log(req.body)
-  
-fs.readFile(filePath, 'utf8', (err, data) => {
-  if (err) {
-    console.error('Error reading JSON file:', err);
-    return;
-  }
-
-  try {
-    const jsonData = JSON.parse(data);
-    res.json(jsonData);
-
-
-    // You can now work with the parsed JSON data as a JavaScript object
-
-
-    
-  } catch (parseError) {
-    console.error('Error parsing JSON:', parseError);
-  }
+app.get("/", (req, res) => {
+  console.log('GET request received');
+  readJsonFile((err, jsonData) => {
+    if (!err) {
+      res.json(jsonData);
+    } else {
+      res.status(500).send('Internal server error');
+    }
+  });
 });
 
-})
+app.post("/post", (req, res) => {
+  console.log('POST request received');
+  readJsonFile((err, jsonData) => {
+    if (!err) {
+      // Assuming req.body contains JSON data to be appended or updated
+      jsonData.push(req.body); // Modify as per your use case
+      fs.writeFile(filePath, JSON.stringify(jsonData, null, 2), (writeErr) => {
+        if (!writeErr) {
+          res.json(jsonData);
+        } else {
+          console.error('Error writing JSON file:', writeErr);
+          res.status(500).send('Internal server error');
+        }
+      });
+    } else {
+      res.status(500).send('Internal server error');
+    }
+  });
+});
 
-app.listen(2000,()=>console.log('accessed'));
-
-
-
-// Serve static files from a directory (optional)
-// app.use(express.static(path.join(__dirname, 'public')));
-
-// Define an API endpoint to serve JSON data
-// app.get('/api/data', (req, res) => {
-   
-// });
-
-// app.listen(port, () => {
-//     console.log(`Server is listening on port ${port}`);
-// });
+const port = 2000;
+app.listen(port, () => console.log(`Server is listening on port ${port}`));
